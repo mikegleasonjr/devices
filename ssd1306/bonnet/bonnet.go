@@ -116,23 +116,19 @@ func (b *Bonnet) listenToButtons() {
 
 func (b *Bonnet) drainEvents(ttl time.Duration) {
 	defer b.wg.Done()
-	fifo := []Event{}
 
 	for {
 		select {
 		case msg := <-b.internalEvents:
-			fifo = append(fifo, msg)
-			msg = fifo[0]
-			since := time.Now().Sub(msg.When)
-			if since < ttl {
+			age := time.Now().Sub(msg.When)
+			if age < ttl {
 				select {
 				case b.Events <- msg:
-				case <-time.After(ttl - since):
+				case <-time.After(ttl - age):
 				case <-b.stop:
 					return
 				}
 			}
-			fifo = fifo[1:]
 		case <-b.stop:
 			return
 		}
