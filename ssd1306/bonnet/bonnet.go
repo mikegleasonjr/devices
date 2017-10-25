@@ -44,9 +44,10 @@ type Event struct {
 // see https://www.adafruit.com/product/3531
 type Bonnet struct {
 	*ssd1306.I2C
-	stop   chan struct{}
-	wg     *sync.WaitGroup
-	Events chan Event
+	wg             *sync.WaitGroup
+	stop           chan struct{}
+	Events         chan Event
+	internalEvents chan Event
 }
 
 // New creates a driver for the Adafruit 128x64 OLED Bonnet for Raspberry Pi.
@@ -58,11 +59,17 @@ func New(name string, rotated bool) (*Bonnet, error) {
 		return nil, err
 	}
 
-	wg := &sync.WaitGroup{}
-	stop := make(chan struct{})
-	b := &Bonnet{display, stop, wg, make(chan Event, 100)}
+	b := &Bonnet{
+		I2C:            display,
+		wg:             &sync.WaitGroup{},
+		stop:           make(chan struct{}),
+		Events:         make(chan Event),
+		internalEvents: make(chan Event, 10),
+	}
 
-	go b.listenToButtons()
+	b.listenToButtons()
+	b.wg.Add(1)
+	go b.drainEvents(time.Second)
 
 	return b, nil
 }
@@ -97,12 +104,37 @@ func (b *Bonnet) listenToButtons() {
 					}
 				}
 				select {
-				case b.Events <- Event{time.Now(), btn.name, pin.Read() == gpio.Low}:
+				case b.internalEvents <- Event{time.Now(), btn.name, pin.Read() == gpio.Low}:
 				case <-b.stop:
 					return
 				default:
 				}
 			}
 		}(btn)
+	}
+}
+
+func (b *Bonnet) drainEvents(ttl time.Duration) {
+	defer b.wg.Done()
+	fifo := []Event{}
+
+	for {
+		select {
+		case msg := <-b.internalEvents:
+			fifo = append(fifo, msg)
+			msg = fifo[0]
+			since := time.Now().Sub(msg.When)
+			if since < ttl {
+				select {
+				case b.Events <- msg:
+				case <-time.After(ttl - since):
+				case <-b.stop:
+					return
+				}
+			}
+			fifo = fifo[1:]
+		case <-b.stop:
+			return
+		}
 	}
 }
