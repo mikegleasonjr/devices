@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/fogleman/gg"
-	"github.com/mikegleasonjr/adafruit/ssd1306/bonnet"
+	"github.com/mikegleasonjr/devices/ssd1306/adafruit/bonnet"
 )
 
 func main() {
@@ -65,7 +65,7 @@ import (
 	"time"
 
 	"github.com/fogleman/gg"
-	"github.com/mikegleasonjr/adafruit/ssd1306/pioled"
+	"github.com/mikegleasonjr/devices/ssd1306/adafruit/pioled"
 )
 
 func main() {

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/mikegleasonjr/adafruit/ssd1306"
+	"github.com/mikegleasonjr/devices/ssd1306"
 	"periph.io/x/periph/conn/gpio"
 	"periph.io/x/periph/conn/gpio/gpioreg"
 )
