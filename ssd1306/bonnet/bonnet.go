@@ -1,6 +1,7 @@
 package bonnet
 
 import (
+	"math"
 	"sync"
 	"time"
 
@@ -64,7 +65,7 @@ func New(name string, rotated bool) (*Bonnet, error) {
 		wg:             &sync.WaitGroup{},
 		stop:           make(chan struct{}),
 		Events:         make(chan Event),
-		internalEvents: make(chan Event, 10),
+		internalEvents: make(chan Event, 100),
 	}
 
 	b.listenToButtons()
@@ -121,13 +122,11 @@ func (b *Bonnet) drainEvents(ttl time.Duration) {
 		select {
 		case msg := <-b.internalEvents:
 			age := time.Now().Sub(msg.When)
-			if age < ttl {
-				select {
-				case b.Events <- msg:
-				case <-time.After(ttl - age):
-				case <-b.stop:
-					return
-				}
+			select {
+			case b.Events <- msg:
+			case <-time.After(time.Duration(math.Max(0, float64(ttl-age)))):
+			case <-b.stop:
+				return
 			}
 		case <-b.stop:
 			return
